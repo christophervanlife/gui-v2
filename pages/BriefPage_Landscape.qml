@@ -350,6 +350,36 @@ Item {
 		}
 	}
 
+	// OEM logo (custom build). Sits in the free space between the left edge gauges and the
+	// main gauge, at the bottom of the page. Adjust the four oem* values to move or resize it.
+	Image {
+		id: oemLogo
+
+		readonly property real oemMaxHeight: 110      // max. logo height in px
+		readonly property real oemBottomMargin: 16    // distance to the navigation bar
+		readonly property real oemSideMargin: 16      // distance to edge gauges / main gauge
+		readonly property real oemOpacity: 0.9
+
+		readonly property real _left: acInputGaugeColumn.x + acInputGaugeColumn.width + oemSideMargin
+
+		x: _left
+		y: root._unexpandedHeight - height - oemBottomMargin
+		width: Math.max(0, mainGauge.x - _left - oemSideMargin)
+		height: oemMaxHeight
+		source: Theme.colorScheme === Theme.Light ? "qrc:/images/oem-logo-light-mode.png" : "qrc:/images/oem-logo-dark-mode.png"
+		mipmap: true
+		fillMode: Image.PreserveAspectFit
+		horizontalAlignment: Image.AlignLeft
+		verticalAlignment: Image.AlignBottom
+		smooth: true
+		visible: width > 24 && status === Image.Ready
+		opacity: root.state === "initialized" ? root._gaugeLabelOpacity * oemOpacity : 0
+
+		Behavior on opacity {
+			OpacityAnimator { duration: 250 }
+		}
+	}
+
 	Timer {
 		id: pauseLeftGaugeAnimations
 		interval: Theme.animation_progressArc_duration

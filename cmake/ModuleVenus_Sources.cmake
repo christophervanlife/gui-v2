@@ -877,6 +877,8 @@ set(VictronVenusOS_RESOURCES
     images/slider_background_dark.svg
     images/solaryield.svg
     images/spinbox_arrow_up.svg
+    images/oem-logo-dark-mode.png
+    images/oem-logo-light-mode.png
     images/splash-logo-icon.svg
     images/splash-logo-text.svg
     images/sunny.svg
