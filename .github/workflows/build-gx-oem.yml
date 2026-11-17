@@ -1,0 +1,67 @@
+name: build-gx-oem
+run-name: GX-Build der Oberflaeche mit Firmenlogo (Venus OS v${{ inputs.venus_version || '3.85' }})
+
+# Baut gui-v2 fuer Cerbo GX / Ekrano GX (ARM) mit dem Venus-OS-SDK.
+# Start: automatisch bei jedem Push auf den Branch "oem-logo",
+# oder von Hand unter Actions -> build-gx-oem -> Run workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      venus_version:
+        description: "Venus-OS-Version auf dem GX (z. B. 3.85)"
+        required: true
+        default: "3.85"
+  push:
+    branches: [ oem-logo ]
+
+jobs:
+  build-gx:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Quellcode mit Submodulen holen
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Venus-OS-SDK passend zur Firmware installieren
+        env:
+          VENUS_VERSION: ${{ inputs.venus_version || '3.85' }}
+        run: |
+          set -euo pipefail
+          VER_RE="${VENUS_VERSION//./\\.}"
+          NAME=""
+          for FEED in release candidate; do
+            URL="https://updates.victronenergy.com/feeds/venus/${FEED}/sdk/"
+            NAME=$(curl -fsSL "$URL" \
+              | grep -oP 'href="\K[^"]*arm-cortexa8hf-neon-toolchain-v'"${VER_RE}"'[^"]*\.sh' \
+              | sort -V | tail -n 1 || true)
+            if [ -n "$NAME" ]; then break; fi
+          done
+          if [ -z "$NAME" ]; then
+            echo "::error::Kein SDK fuer Venus OS v${VENUS_VERSION} gefunden. Verfuegbare SDKs:"
+            curl -fsSL "https://updates.victronenergy.com/feeds/venus/release/sdk/" | grep -oP 'href="\K[^"]*\.sh' || true
+            exit 1
+          fi
+          echo "SDK: ${URL}${NAME}"
+          curl -fSL -o /tmp/venus-sdk.sh "${URL}${NAME}"
+          chmod +x /tmp/venus-sdk.sh
+          sudo /tmp/venus-sdk.sh -y -d "/opt/venus/v${VENUS_VERSION}"
+          sudo chown -R "$USER:$USER" /opt/venus
+          ln -sfn "/opt/venus/v${VENUS_VERSION}" /opt/venus/current
+
+      - name: Oberflaeche bauen
+        run: bash scripts/build-gx.sh
+
+      - name: Paket schnueren
+        run: |
+          tar -czf venus-gui-v2-oem.tar.gz -C build-gx_files_to_copy .
+          ls -la venus-gui-v2-oem.tar.gz
+
+      - name: Paket hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: venus-gui-v2-oem-v${{ inputs.venus_version || '3.85' }}
+          path: venus-gui-v2-oem.tar.gz
+          retention-days: 30
